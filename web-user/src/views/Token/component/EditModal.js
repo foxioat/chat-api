@@ -61,6 +61,8 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
   const [models, setModels] = useState([]);
 
   //@add
+  const [loading, setLoading] = useState(isEdit);
+  const [userState] = useContext(UserContext);
   const [groupOptions, setGroupOptions] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState();
   
@@ -150,21 +152,7 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
     }
   };
 
-  const loadToken = async () => {
-    let res = await API.get(`/api/token/${tokenId}`);
-    const { success, message, data } = res.data;
-    if (success) {
-      data.is_edit = true;
-      setInputs({
-        ...data,
-        remain_quota: parseFloat(data.remain_quota)/quotaPerUnit, 
-        models: data.models ? data.models.split(',') : [] 
-      });
-    } else {
-      showError(message);
-    }
-  };
-  //@add
+//@add
   const fetchGroups = async () => {
     try {
       let res = await API.get(`/api/group/`);
@@ -176,22 +164,43 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
       showError(error.message);
     }
   };
-  
-  useEffect(() => {
-    if (tokenId) {
-      loadToken().catch(showError);
+  const loadToken = async () => {
+    setLoading(true);
+    let res = await API.get(`/api/token/${props.editingToken.id}`);
+    const {success, message, data} = res.data;
+    if (success) {
+      if (data.expired_time !== -1) {
+        data.expired_time = timestamp2string(data.expired_time);
+      }
+      if (data.models && typeof data.models === 'string') {
+        data.models = data.models.split(',');
+      }
+      setInputs(data);
+      setSelectedGroup(data.group || userState?.user?.group || 'default');// 根据加载的数据设置分组
     } else {
-      setInputs({
-        ...originInputs, 
-        models: [], 
-      });
+      showError(message);
     }
-    //@add
+    setLoading(false);
+  };
+  useEffect(() => {
+    if (isEdit) {
+      loadToken().then(
+          () => {
+            //console.log("Token loaded: ", inputs);
+          }
+      );
+    } else {
+      setInputs(originInputs);
+      setSelectedGroup(userState?.user?.group || 'default');
+    }
+    // if (isAdminUser) {
+    //   fetchGroups().then(); // 如果是管理员，则获取分组选项
+    // }
     fetchGroups().then(); // 如果是管理员，则获取分组选项
-    
-    loadModels();
     getOptions();
-  }, [tokenId]);
+    loadModels();
+  }, [props.editingToken.id]);
+
 
   useEffect(() => {
     // 此处代码用于初始加载和tokenId改变时重设batchAddCount
