@@ -59,6 +59,11 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
   const [billingByRequestEnabled, setBillingByRequestEnabled] = useState('');
   const [options, setOptions] = useState({});
   const [models, setModels] = useState([]);
+
+  //@add
+  const [groupOptions, setGroupOptions] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState();
+  
   let quotaPerUnit = localStorage.getItem('quota_per_unit');
   const generateRandomSuffix = () => {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
@@ -159,7 +164,19 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
       showError(message);
     }
   };
-
+  //@add
+  const fetchGroups = async () => {
+    try {
+      let res = await API.get(`/api/group/`);
+      setGroupOptions(res.data.data.map((group) => ({
+        label: group,
+        value: group,
+      })));
+    } catch (error) {
+      showError(error.message);
+    }
+  };
+  
   useEffect(() => {
     if (tokenId) {
       loadToken().catch(showError);
@@ -169,6 +186,9 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
         models: [], 
       });
     }
+    //@add
+    fetchGroups().then(); // 如果是管理员，则获取分组选项
+    
     loadModels();
     getOptions();
   }, [tokenId]);
@@ -357,22 +377,16 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
               {tokenId ? null : (
               modelRatioEnabled && billingByRequestEnabled && (
               <FormControl fullWidth error={Boolean(touched.billing_enabled && errors.billing_enabled)} sx={{ ...theme.typography.otherInput }}>
-                  <InputLabel id="billing-enabled-label">计费方式</InputLabel>
+                  <InputLabel id="group-enabled-label">令牌渠道分组</InputLabel>
                   <Select
-                    labelId="billing-enabled-label"
-                    id="billing-enabled-select"
-                    value={String(values.billing_enabled)} // 将布尔值转换为字符串
-                    label="计费方式"
-                    name="billing_enabled"
-                    onBlur={handleBlur}
-                    onChange={(event) => {
-                      // 更新表单状态时，将字符串转换回布尔值
-                      setFieldValue('billing_enabled', event.target.value === 'true');
-                    }}
-                  >
-                    <MenuItem value={'false'}>按Token计费</MenuItem>
-                    <MenuItem value={'true'}>按次计费</MenuItem>
-                  </Select>
+                      placeholder={'请选择分组'}
+                      name='group'
+                      onChange={(value) => setSelectedGroup(value)}
+                      value={selectedGroup}
+                      autoComplete='new-password'
+                      optionList={groupOptions}
+                      style={{ width: '100%', marginTop: 8 }}
+                  />
                   {touched.billing_enabled && errors.billing_enabled && (
                     <FormHelperText error id="helper-text-billing-enabled">
                       {errors.billing_enabled}
