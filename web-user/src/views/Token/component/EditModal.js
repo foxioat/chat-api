@@ -61,6 +61,7 @@ const EditModal = ({ open, tokenId, onCancel, onOk }) => {
   const [models, setModels] = useState([]);
 
   //@add
+  const isEdit = props.editingToken.id !== undefined;
   const [loading, setLoading] = useState(isEdit);
   const [userState] = useContext(UserContext);
   const [groupOptions, setGroupOptions] = useState([]);
